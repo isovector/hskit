@@ -24,6 +24,12 @@ dependencies:
 - polysemy
 - polysemy-zoo
 - polysemy-plugin
+- gi-webkit2 >=4.0.6 && <4.1
+- gi-gtk
+- gi-gdk
+- haskell-gi-base
+- text
+- gi-gio
 
 library:
   source-dirs: src
@@ -45,6 +51,7 @@ default-extensions:
   - TypeOperators
   - TypeFamilies
   - UnicodeSyntax
+  - OverloadedLabels
 
 executables:
   hskit-exe:

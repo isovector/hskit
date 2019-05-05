@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import Polysemy.Webkit
 
 main :: IO ()
-main = someFunc
+main = showWin
