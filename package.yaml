@@ -21,15 +21,16 @@ description:         Please see the README on GitHub at <https://github.com/isov
 
 dependencies:
 - base >= 4.7 && < 5
-- polysemy
-- polysemy-zoo
-- polysemy-plugin
-- gi-webkit2 >=4.0.6 && <4.1
-- gi-gtk
 - gi-gdk
-- haskell-gi-base
-- text
 - gi-gio
+- gi-gtk
+- gi-webkit2 >=4.0.6 && <4.1
+- gi-webkit2webextension
+- haskell-gi-base
+- polysemy
+- polysemy-plugin
+- polysemy-zoo
+- text
 
 library:
   source-dirs: src
