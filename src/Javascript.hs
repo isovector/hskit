@@ -21,7 +21,7 @@ jsScrollBottom :: Javascript
 jsScrollBottom = "window.scrollTo(0, 9999999);"
 
 jsScroll :: Int -> Javascript
-jsScroll lines = [qc|"window.scrollTo(0, 14 * lines);"|]
+jsScroll lines = [qc|"window.scrollTo(0, 14 * #{lines});"|]
 
 runJS :: WK2.WebView -> Javascript -> IO ()
 runJS wv (Javascript js) = WK2.webViewRunJavascript wv js noCancellable Nothing
