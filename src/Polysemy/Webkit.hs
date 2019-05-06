@@ -1,22 +1,3 @@
-
---   uriEntry <- new Gtk.Entry [#placeholderText := "Type the address to load here",
---                              #widthChars := 50]
---   on uriEntry #activate $ do
---     uri <- uriEntry `get` #text
---     #loadUri view uri
-
---   header <- new Gtk.HeaderBar [#showCloseButton := True,
---                                #customTitle := uriEntry,
---                                #title := "A simple WebKit browser"]
---   #setTitlebar win (Just header)
-
---   on view (PropertyNotify #estimatedLoadProgress) $ \_ -> do
---     status <- view `get` #estimatedLoadProgress
---     uriEntry `set` [#progressFraction := if status /= 1.0
---                                          then status
---                                          else 0]
-
-
 {-# LANGUAGE BlockArguments    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
@@ -29,12 +10,15 @@ import           Data.Foldable
 import           Data.GI.Base
 import           Data.IORef
 import           Data.Text
+import qualified Data.Trie as T
 import qualified GI.Gdk as Gdk
 import           GI.Gio.Objects.Cancellable (noCancellable)
 import qualified GI.Gtk as Gtk
 import qualified GI.WebKit2 as WK2
 import           Polysemy
 import           Polysemy.Operators
+import           Polysemy.State hiding (get)
+import qualified Polysemy.State as S
 
 data WebView m a where
   GetWebView :: WebView m (WK2.WebView)
@@ -42,8 +26,10 @@ data WebView m a where
 makeSem ''WebView
 
 data Viewport m a where
+  ScrollTop :: Viewport m ()
   ScrollDown :: Viewport m ()
   ScrollUp   :: Viewport m ()
+  ScrollBottom :: Viewport m ()
 
 makeSem ''Viewport
 
@@ -110,6 +96,10 @@ runViewport
   :: Viewport :r@> a
   -> '[Lift IO, WebView] >@r@> a
 runViewport = interpret \case
+  ScrollTop -> do
+    wv <- getWebView
+    sendM $ WK2.webViewRunJavascript wv "window.scrollTo(0, 0);" noCancellable Nothing
+
   ScrollDown -> do
     wv <- getWebView
     sendM $ WK2.webViewRunJavascript wv "window.scrollBy(0, 14 * 3);" noCancellable Nothing
@@ -117,6 +107,10 @@ runViewport = interpret \case
   ScrollUp -> do
     wv <- getWebView
     sendM $ WK2.webViewRunJavascript wv "window.scrollBy(0, -14 * 3);" noCancellable Nothing
+
+  ScrollBottom -> do
+    wv <- getWebView
+    sendM $ WK2.webViewRunJavascript wv "window.scrollTo(0, 9999999);" noCancellable Nothing
 
 
 runNavigation
@@ -152,6 +146,40 @@ runNavigation lower = interpretH \case
     pure istate
 
 
+keycommands
+    :: forall r a
+     . T.Trie Char (r@> ())
+    -> '[Lift IO, Navigation] >@r@> ()
+keycommands t = do
+  sref <- sendM $ newIORef ""
+  tref <- sendM $ newIORef t
+  fref <- sendM $ newIORef $ Nothing @(Sem r ())
+  runStateInIORef sref
+    . runStateInIORef fref
+    . runStateInIORef tref
+    . installKeyHook
+    $ \chr -> do
+      t' <- S.get @(T.Trie Char (r@> ()))
+      case T.follow t' chr of
+        (Nothing, Just f) -> do
+          raise $ raise $ raise f
+          S.put t
+        (Nothing, Nothing) -> do
+          S.put t
+          S.put $ Nothing @(Sem r ())
+        (Just t', Just f) -> do
+          S.put $ Just f
+          S.put t'
+        (Just t', Nothing) -> do
+          S.put $ Nothing @(Sem r ())
+          S.put t'
+      pure True
+
+
+
+
+
+
 -- settings >
 -- GI.WebKit2.Objects.WebsiteDataManager.websiteDataManagerGetCookieManager
 -- > set persistant storage
@@ -172,16 +200,16 @@ showWin = do
     ]
 
   ((runM . runWebView wv) .@ runNavigation .@ runFreeForm uriEntry) . runViewport $ do
-    installKeyHook $ \c -> do
-      sendM $ print c
-      case c of
-        'j' -> scrollDown
-        'k' -> scrollUp
-        'H' -> goBackward
-        'L' -> goForward
-        'o' -> withFreeForm "https://" $ \uri -> navigateTo uri
-        _   -> pure ()
-      pure True
+    keycommands $ T.fromList
+      [ ("j", scrollDown)
+      , ("k", scrollUp)
+      , ("H", goBackward)
+      , ("L", goForward)
+      , ("o", withFreeForm "https://" $ \uri -> navigateTo uri)
+      , ("gg", scrollTop)
+      , ("G", scrollBottom)
+      ]
+
     navigateTo "http://github.com"
 
   #add vbox wv
@@ -190,6 +218,10 @@ showWin = do
   #add win vbox
   #showAll win
   Gtk.main
+
+
+esc :: Char
+esc = '\65307'
 
 main = showWin
 
