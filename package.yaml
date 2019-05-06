@@ -21,9 +21,11 @@ description:         Please see the README on GitHub at <https://github.com/isov
 
 dependencies:
 - base >= 4.7 && < 5
+- async
 - gi-gdk
 - gi-gio
 - gi-gtk
+- gi-gtk-hs
 - gi-webkit2 >=4.0.6 && <4.1
 - gi-webkit2webextension
 - haskell-gi-base

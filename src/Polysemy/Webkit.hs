@@ -2,14 +2,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 
-module Polysemy.Navigation where
+module Polysemy.Webkit where
 
+import           Control.Concurrent
+import qualified Control.Concurrent.Async as A
 import           Control.Monad
 import           Data.Char (chr)
 import           Data.Foldable
 import           Data.GI.Base
+import           Data.GI.Gtk.Threading
 import           Data.IORef
-import           Data.Text
+import           Data.Text (Text)
 import qualified Data.Trie as T
 import qualified GI.Gdk as Gdk
 import           GI.Gio.Objects.Cancellable (noCancellable)
@@ -17,8 +20,16 @@ import qualified GI.Gtk as Gtk
 import qualified GI.WebKit2 as WK2
 import           Polysemy
 import           Polysemy.Operators
-import           Polysemy.State hiding (get)
 import qualified Polysemy.State as S
+import           Polysemy.State hiding (get)
+
+
+data Delayed m a where
+  Delay :: Int -> m () -> Delayed m ()
+  Cancel :: Delayed m ()
+
+makeSem ''Delayed
+
 
 data WebView m a where
   GetWebView :: WebView m (WK2.WebView)
@@ -45,6 +56,41 @@ data FreeForm m a where
   WithFreeForm :: Text -> (Text -> m ()) -> FreeForm m ()
 
 makeSem ''FreeForm
+
+runDelayed
+    :: (forall x. r@> x -> IO x)
+    -> Delayed :r@> a
+    -> IO ~@r@> a
+runDelayed lower m = do
+  ref <- sendM $ newIORef []
+  runDelayed' ref lower m
+
+
+-- TODO(sandy): this crashes like crazy
+runDelayed'
+    :: IORef ([A.Async ()])
+    -> (forall x. r@> x -> IO x)
+    -> Delayed :r@> a
+    -> IO ~@r@> a
+runDelayed' ref lower = interpretH \case
+  Cancel -> do
+    sendM $ do
+      mfuture <- readIORef ref
+      for_ mfuture $ \e -> do
+        A.cancel e
+      modifyIORef ref $ drop 1
+    getInitialStateT
+
+  Delay time m -> do
+    m' <- runT m
+    sendM $ do
+      a <- A.async $ do
+        threadDelay time
+        postGUIASync $ void $ lower .@ runDelayed' ref $ m'
+        modifyIORef ref $ drop 1
+      modifyIORef ref $ (++ [a])
+    getInitialStateT
+
 
 runFreeForm'
     :: forall r a
@@ -149,36 +195,32 @@ runNavigation lower = interpretH \case
 keycommands
     :: forall r a
      . T.Trie Char (r@> ())
-    -> '[Lift IO, Navigation] >@r@> ()
+    -> '[Lift IO, Navigation, Delayed] >@r@> ()
 keycommands t = do
   sref <- sendM $ newIORef ""
   tref <- sendM $ newIORef t
-  fref <- sendM $ newIORef $ Nothing @(Sem r ())
   runStateInIORef sref
-    . runStateInIORef fref
     . runStateInIORef tref
     . installKeyHook
     $ \chr -> do
       t' <- S.get @(T.Trie Char (r@> ()))
       case T.follow t' chr of
         (Nothing, Just f) -> do
-          raise $ raise $ raise f
+          cancel
+          raise $ raise f
           S.put t
         (Nothing, Nothing) -> do
+          cancel
           S.put t
-          S.put $ Nothing @(Sem r ())
         (Just t', Just f) -> do
-          S.put $ Just f
+          delay 1000000 $ do
+            raise $ raise f
+            S.put t
           S.put t'
         (Just t', Nothing) -> do
-          S.put $ Nothing @(Sem r ())
+          cancel
           S.put t'
       pure True
-
-
-
-
-
 
 -- settings >
 -- GI.WebKit2.Objects.WebsiteDataManager.websiteDataManagerGetCookieManager
@@ -187,6 +229,7 @@ keycommands t = do
 showWin :: IO ()
 showWin = do
   Gtk.init Nothing
+  setCurrentThreadAsGUIThread
 
   win <- new Gtk.Window [ #title := "Hi there" ]
   on win #destroy Gtk.mainQuit
@@ -199,13 +242,16 @@ showWin = do
     , #widthChars := 50
     ]
 
-  ((runM . runWebView wv) .@ runNavigation .@ runFreeForm uriEntry) . runViewport $ do
+-- TODO(sandy): BUG BUG BUG BUG BUG
+-- because runDelayed spins up an IORef, this fucks everything
+  ((runM . runWebView wv) .@ runNavigation .@ runDelayed .@ runFreeForm uriEntry) . runViewport $ do
     keycommands $ T.fromList
       [ ("j", scrollDown)
       , ("k", scrollUp)
       , ("H", goBackward)
       , ("L", goForward)
       , ("o", withFreeForm "https://" $ \uri -> navigateTo uri)
+      , ("oo", withFreeForm "COOL" $ \uri -> navigateTo uri)
       , ("gg", scrollTop)
       , ("G", scrollBottom)
       ]
@@ -222,6 +268,4 @@ showWin = do
 
 esc :: Char
 esc = '\65307'
-
-main = showWin
 
