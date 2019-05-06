@@ -18,6 +18,7 @@ import qualified GI.Gdk as Gdk
 import           GI.Gio.Objects.Cancellable (noCancellable)
 import qualified GI.Gtk as Gtk
 import qualified GI.WebKit2 as WK2
+import           Javascript
 import           Polysemy
 import           Polysemy.Operators
 import qualified Polysemy.State as S
@@ -144,19 +145,19 @@ runViewport
 runViewport = interpret \case
   ScrollTop -> do
     wv <- getWebView
-    sendM $ WK2.webViewRunJavascript wv "window.scrollTo(0, 0);" noCancellable Nothing
+    sendM $ runJS wv jsScrollTop
 
   ScrollDown -> do
     wv <- getWebView
-    sendM $ WK2.webViewRunJavascript wv "window.scrollBy(0, 14 * 3);" noCancellable Nothing
+    sendM $ runJS wv $ jsScroll 3
 
   ScrollUp -> do
     wv <- getWebView
-    sendM $ WK2.webViewRunJavascript wv "window.scrollBy(0, -14 * 3);" noCancellable Nothing
+    sendM $ runJS wv $ jsScroll $ -3
 
   ScrollBottom -> do
     wv <- getWebView
-    sendM $ WK2.webViewRunJavascript wv "window.scrollTo(0, 9999999);" noCancellable Nothing
+    sendM $ runJS wv jsScrollBottom
 
 
 runNavigation

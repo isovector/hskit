@@ -27,13 +27,13 @@ dependencies:
 - gi-gtk
 - gi-gtk-hs
 - gi-webkit2 >=4.0.6 && <4.1
-- gi-webkit2webextension
 - haskell-gi-base
 - polysemy
 - polysemy-plugin
 - polysemy-zoo
 - text
 - containers
+- interpolatedstring-qq2
 
 library:
   source-dirs: src
