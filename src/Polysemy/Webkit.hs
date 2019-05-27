@@ -1,6 +1,7 @@
-{-# LANGUAGE BlockArguments    #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE BlockArguments     #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE TemplateHaskell    #-}
 
 module Polysemy.Webkit where
 
@@ -14,13 +15,14 @@ import qualified GI.WebKit2 as WK2
 import           Javascript
 import           Polysemy
 import           Polysemy.Delayed
+import           Polysemy.FreeForm
+import           Polysemy.IdempotentLowering
 import           Polysemy.Input
 import           Polysemy.Navigation
-import           Polysemy.FreeForm
-import           Polysemy.Viewport
 import           Polysemy.Operators
 import qualified Polysemy.State as S
 import           Polysemy.State hiding (get)
+import           Polysemy.Viewport
 
 
 keycommands
@@ -73,7 +75,11 @@ showWin = do
     , #widthChars := 50
     ]
 
-  ((runM . runConstInput wv) .@ runNavigation .@ runDelayed .@ runFreeForm uriEntry) . runViewport $ do
+  handler <- nat (runM . runConstInput wv .@ runNavigation)
+         .@! runDelayed
+         .@! runFreeForm uriEntry wv
+
+  handler . runViewport $ do
     keycommands $ T.fromList
       [ ("j", scrollDown)
       , ("k", scrollUp)
