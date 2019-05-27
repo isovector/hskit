@@ -45,11 +45,11 @@ keycommands t = do
         (Nothing, Nothing) -> do
           cancel
           S.put t
-        (Just _, Just f) -> do
+        (Just t'', Just f) -> do
           delay 1000000 $ do
             raise $ raise f
             S.put t
-          S.put t'
+          S.put t''
         (Just t'', Nothing) -> do
           cancel
           S.put t''
