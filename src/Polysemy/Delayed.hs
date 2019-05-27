@@ -25,8 +25,7 @@ makeSem ''Delayed
 
 
 runDelayed
-    :: forall r
-     . Member (Lift IO) r
+    :: Member (Lift IO) r
     => (forall x. r@> x -> IO x)
     -> IO (forall a. Sem (Delayed ': r) a -> Sem r a)
 runDelayed lower = do
