@@ -15,7 +15,6 @@ import           Polysemy
 import           Polysemy.Input
 import           Polysemy.Operators
 import           Polysemy.IdempotentLowering
-import           Polysemy.ZooAdditions
 
 data FreeForm m a where
   WithFreeForm :: Text -> (Text -> m ()) -> FreeForm m ()

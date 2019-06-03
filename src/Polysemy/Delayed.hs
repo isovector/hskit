@@ -13,8 +13,8 @@ import           Data.Function (fix)
 import           Data.GI.Gtk.Threading
 import           Data.IORef
 import           Polysemy
+import           Polysemy.IdempotentLowering
 import           Polysemy.Operators
-import           Polysemy.ZooAdditions
 
 
 data Delayed m a where
