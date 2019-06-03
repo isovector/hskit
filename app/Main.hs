@@ -4,6 +4,7 @@
 module Main where
 
 import           Control.Monad
+import           Data.Bifunctor
 import           Data.GI.Base
 import           Data.GI.Gtk.Threading
 import qualified Data.Trie as T
@@ -15,6 +16,7 @@ import           Polysemy.Delayed
 import           Polysemy.FreeForm
 import           Polysemy.IdempotentLowering
 import           Polysemy.Input
+import           Polysemy.Labeler
 import           Polysemy.Navigation
 import           Polysemy.RPC
 import           Polysemy.Viewport
@@ -56,7 +58,7 @@ main = do
          .@! runDelayed
          .@! runFreeForm uriEntry wv
 
-  handler . runViewport $ do
+  handler . runViewport . runLabelerOverRPC $ do
     keycommands $ T.fromList
       [ ("j", scrollDown)
       , ("k", scrollUp)
@@ -67,9 +69,8 @@ main = do
       , ("gg", scrollTop)
       , ("G", scrollBottom)
       , ("p", do
-                sendMessage "what UP"
-                resp <- recvMessage
-                sendM $ print resp
+                rects <- getLinkRects
+                setLabels $ fmap (first pure) $ zip ['a' ..] rects
         )
       ]
 
@@ -81,4 +82,6 @@ main = do
   #add win vbox
   #showAll win
   Gtk.main
+
+
 

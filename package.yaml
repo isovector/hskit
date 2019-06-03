@@ -57,12 +57,15 @@ verbatim: |
 
     pkgconfig-depends: webkit2gtk-web-extension-4.0
 
-    ghc-options: -Wall -threaded
+    ghc-options: -Wall -threaded -XTypeApplications -fplugin=Polysemy.Plugin
 
     other-modules:       SimpleExtension
     build-depends:       base >=4.7 && <5,
                          haskell-gi-base,
                          hskit,
+                         polysemy,
+                         polysemy-zoo,
+                         polysemy-plugin,
                          gi-webkit2webextension == 4.0.*,
                          text >= 1.0
     c-sources:           extension/SimpleExtensionInit.c

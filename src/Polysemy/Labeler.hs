@@ -1,5 +1,8 @@
 {-# LANGUAGE BlockArguments    #-}
 {-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 
@@ -7,23 +10,32 @@
 
 module Polysemy.Labeler where
 
+import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Bifunctor
+import           Data.Binary
 import           Data.Foldable
 import           Data.GI.Base
+import           Data.IORef
+import qualified Data.Text as T
 import           Data.Traversable
 import           Foreign.C.Types
+import           GHC.Generics
 import           GHC.OverloadedLabels
 import qualified GI.WebKit2WebExtension as WE
 import           Polysemy
+import           Polysemy.Error
 import           Polysemy.NonDet
 import           Polysemy.Operators
-import qualified Data.Text as T
+import           Polysemy.RPC
+
+import Data.Coerce
+
 
 data AABB a = AABB
   { aMin :: (a, a)
   , aMax :: (a, a)
-  } deriving (Eq, Ord, Show, Read, Functor)
+  } deriving (Eq, Ord, Show, Read, Functor, Generic, Binary)
 
 
 aabbsIntersect :: Ord a => AABB a -> AABB a -> Bool
@@ -37,8 +49,8 @@ aabbsIntersect (AABB (al, au) (ar, ad))
 
 
 data Labeler m a where
-  GetLinkRects    :: Labeler m [AABB Float]
-  SetLabels   :: [(String, AABB Float)] -> Labeler m ()
+  GetLinkRects :: Labeler m [AABB Float]
+  SetLabels    :: [(String, AABB Float)] -> Labeler m ()
 
 makeSem ''Labeler
 
@@ -46,26 +58,55 @@ type IsContainer m a b =
   ( MonadIO m
   , IsLabel "getLength" (a -> m CULong)
   , IsLabel "item" (a -> CULong -> m b)
+  , Coercible a (ManagedPtr a)
   )
 
 itemsOf
-  :: IsContainer m a b
+  :: forall m a b. IsContainer m a b
   => m a
   -> m [b]
 itemsOf mctr = do
   ctr <- mctr
+  liftIO $ print $ managedForeignPtr $ coerce @_ @(ManagedPtr a) ctr
   (len :: CULong) <- #getLength ctr
-  for [0 .. len - 1] $ \i ->
+  for [0 .. len - 1] $ \i -> do
     #item ctr i
 
 
-runLabelerWebExt :: WE.DOMDOMWindow -> Labeler :r@> a -> '[Lift IO, NonDet] >@r@> a
-runLabelerWebExt win = interpret \case
+runLabelerOverRPC :: Labeler :r@> a -> '[RPC] >@r@> a
+runLabelerOverRPC = interpret \case
   GetLinkRects -> do
+    sendMessage "Labeler"
+    sendMessage "GetLinkRects"
+    recvSomething
+
+  SetLabels labels -> do
+    sendMessage "Labeler"
+    sendMessage "SetLabels"
+    sendSomething labels
+
+
+dispatchLabeler :: '[RPC, Labeler, Error ()] >@r@> ()
+dispatchLabeler = do
+  void recvMessage
+  recvMessage >>= \case
+    "GetLinkRects" -> getLinkRects >>= sendSomething
+    "SetLabels"    -> do
+      labels <- recvSomething
+      setLabels labels
+    _ -> throw ()
+
+
+runLabelerWebExt :: IORef WE.DOMDOMWindow -> Labeler :r@> a -> '[Lift IO, NonDet] >@r@> a
+runLabelerWebExt ref = interpret \case
+  GetLinkRects -> do
+    win <- sendM $ readIORef ref
     sx <- fromIntegral <$> #getScrollX win
     sy <- fromIntegral <$> #getScrollY win
 
     doc <- #getDocument win
+    liftIO $ print $ managedForeignPtr $ coerce win
+    liftIO $ print $ managedForeignPtr $ coerce doc
     nodes <- itemsOf $ #querySelectorAll doc "a"
     for nodes $ \node -> do
       Just e <- sendM $ castTo WE.DOMElement node
@@ -76,6 +117,7 @@ runLabelerWebExt win = interpret \case
                   (bimap (+sx) (+sy) br)
 
   SetLabels ls -> do
+    win <- sendM $ readIORef ref
     doc <- #getDocument win
 
     old_els <- itemsOf $ #querySelectorAll doc ".__hskit_label__"

@@ -33,7 +33,7 @@ netClient :: AddrInfo -> IO Socket
 netClient addr = do
   sock <- socket AF_INET Stream defaultProtocol
   connect sock $ addrAddress addr
-  pure sock
+  return sock
 
 
 netAddr :: String -> IO AddrInfo
