@@ -41,6 +41,7 @@ library:
 
 ghc-options:
   - -fplugin=Polysemy.Plugin
+  - -Wall
 
 verbatim: |
   foreign-library hskit-ext
@@ -57,7 +58,7 @@ verbatim: |
 
     other-modules:       SimpleExtension
     build-depends:       base >=4.7 && <5,
-                         haskell-gi-base == 0.22.*,
+                         haskell-gi-base,
                          gi-webkit2webextension == 4.0.*,
                          text >= 1.0
     c-sources:           extension/SimpleExtensionInit.c
