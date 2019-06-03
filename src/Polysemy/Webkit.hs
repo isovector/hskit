@@ -23,6 +23,7 @@ import           Polysemy.Operators
 import qualified Polysemy.State as S
 import           Polysemy.State hiding (get)
 import           Polysemy.Viewport
+import Data.Text (Text)
 
 
 keycommands
@@ -68,7 +69,14 @@ showWin = do
   void $ on win #destroy Gtk.mainQuit
 
   vbox <- new Gtk.Box [ #orientation := Gtk.OrientationVertical ]
-  wv   <- new WK2.WebView [ #vexpand := True ]
+
+  context <- new WK2.WebContext []
+  on context #initializeWebExtensions $ do
+    #setWebExtensionsDirectory context ".stack-work/install/x86_64-linux-tinfo6/lts-13.0/8.6.3/lib/"
+    userData <- toGVariant ("Hi, extension!" :: Text)
+    #setWebExtensionsInitializationUserData context userData
+
+  wv   <- new WK2.WebView [ #vexpand := True, #webContext := context ]
 
   uriEntry <- new Gtk.Entry
     [ #placeholderText := "Type the address to load here"
