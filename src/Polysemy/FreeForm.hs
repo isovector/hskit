@@ -12,7 +12,6 @@ import           Data.Text (Text)
 import qualified GI.Gtk as Gtk
 import qualified GI.WebKit2 as WK2
 import           Polysemy
-import           Polysemy.Input
 import           Polysemy.Operators
 import           Polysemy.IdempotentLowering
 
@@ -33,7 +32,7 @@ runFreeForm entry wv lower = do
   ref <- newIORef $ const $ pure ()
 
   me <-
-    fixedNat $ \me -> interpretH \case
+    fixedNat $ const $ interpretH \case
       WithFreeForm prompt f -> do
         f' <- bindT f
         is <- getInitialStateT

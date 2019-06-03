@@ -5,7 +5,7 @@ packages:
 
 extra-deps:
 - polysemy-0.3.0.0
-- polysemy-plugin-0.2.0.0
+- polysemy-plugin-0.2.0.1
 - polysemy-zoo-0.1.2.0
 - gi-webkit2-4.0.19@sha256:0230edaa7f06e2e6a20dba140eea751f39d5db5ba570ea9e3d7979771e37b197
 - gi-soup-2.4.16@sha256:492ab7623ddf42ce3f02d08aa9964b743800e1264140ca60640b53d44299bfc6

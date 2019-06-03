@@ -6,7 +6,6 @@ module Main where
 import           Control.Monad
 import           Data.GI.Base
 import           Data.GI.Gtk.Threading
-import           Data.Text (Text)
 import qualified Data.Trie as T
 import qualified GI.Gtk as Gtk
 import qualified GI.WebKit2 as WK2
@@ -17,6 +16,7 @@ import           Polysemy.FreeForm
 import           Polysemy.IdempotentLowering
 import           Polysemy.Input
 import           Polysemy.Navigation
+import           Polysemy.RPC
 import           Polysemy.Viewport
 import           Polysemy.Webkit
 
@@ -29,6 +29,9 @@ main = do
   void $ Gtk.init Nothing
   setCurrentThreadAsGUIThread
 
+  port <- getPort
+  (socket, mvar) <- getHostSocket port
+
   win <- new Gtk.Window [ #title := "Hi there" ]
   void $ on win #destroy Gtk.mainQuit
 
@@ -39,7 +42,7 @@ main = do
     #setWebExtensionsDirectory
         context
         ".stack-work/install/x86_64-linux-tinfo6/lts-13.0/8.6.3/lib/"
-    userData <- toGVariant ("Hi, extension!" :: Text)
+    userData <- toGVariant port
     #setWebExtensionsInitializationUserData context userData
 
   wv   <- new WK2.WebView [ #vexpand := True, #webContext := context ]
@@ -49,7 +52,7 @@ main = do
     , #widthChars := 50
     ]
 
-  handler <- nat (runM . runConstInput wv .@ runNavigation)
+  handler <- nat (runM @IO . runRPCOverUDP socket mvar . runConstInput wv .@ runNavigation)
          .@! runDelayed
          .@! runFreeForm uriEntry wv
 
@@ -63,6 +66,7 @@ main = do
       , ("f", sendM $ runJS wv jsHinting)
       , ("gg", scrollTop)
       , ("G", scrollBottom)
+      , ("p", sendMessage "what UP" )
       ]
 
     navigateTo "http://github.com/isovector/hskit"

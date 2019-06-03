@@ -9,7 +9,6 @@ import           Control.Concurrent
 import qualified Control.Concurrent.Async as A
 import           Control.Monad
 import           Data.Foldable
-import           Data.Function (fix)
 import           Data.GI.Gtk.Threading
 import           Data.IORef
 import           Polysemy
@@ -45,7 +44,6 @@ runDelayed lower = do
         sendM $ do
           a <- A.async $ do
             threadDelay time
-            let z = me $ m'
             postGUIASync $ void $ lower $ me $ m'
             modifyIORef ref $ drop 1
           modifyIORef ref $ (++ [a])
