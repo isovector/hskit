@@ -30,6 +30,7 @@ initialize_simple_web_extension_with_user_data extensionPtr dataPtr = do
   void $ forkIO $ forever $ do
     msg <- netRecv socket
     print msg
+    netSend socket "pong"
 
   void $ on extension #pageCreated $ \page -> do
     void $ on page #documentLoaded $ do

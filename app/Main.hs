@@ -30,7 +30,7 @@ main = do
   setCurrentThreadAsGUIThread
 
   port <- getPort
-  (socket, mvar) <- getHostSocket port
+  mvar <- getHostSocket port
 
   win <- new Gtk.Window [ #title := "Hi there" ]
   void $ on win #destroy Gtk.mainQuit
@@ -52,7 +52,7 @@ main = do
     , #widthChars := 50
     ]
 
-  handler <- nat (runM @IO . runRPCOverUDP socket mvar . runConstInput wv .@ runNavigation)
+  handler <- nat (runM @IO . runRPCOverUDP mvar . runConstInput wv .@ runNavigation)
          .@! runDelayed
          .@! runFreeForm uriEntry wv
 
@@ -66,7 +66,11 @@ main = do
       , ("f", sendM $ runJS wv jsHinting)
       , ("gg", scrollTop)
       , ("G", scrollBottom)
-      , ("p", sendMessage "what UP" )
+      , ("p", do
+                sendMessage "what UP"
+                resp <- recvMessage
+                sendM $ print resp
+        )
       ]
 
     navigateTo "http://github.com/isovector/hskit"

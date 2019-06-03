@@ -15,7 +15,7 @@ import           Network.Socket hiding (recvFrom)
 import           Network.Socket.ByteString
 
 
-netHost :: AddrInfo -> IO (Socket, MVar Socket)
+netHost :: AddrInfo -> IO (MVar Socket)
 netHost addr = do
   mvar <- newEmptyMVar
   sock <- socket AF_INET Stream defaultProtocol
@@ -26,7 +26,7 @@ netHost addr = do
   void $ forkIO $ do
     z <- accept sock
     putMVar mvar $ fst z
-  pure (sock, mvar)
+  pure mvar
 
 
 netClient :: AddrInfo -> IO Socket
