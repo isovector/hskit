@@ -9,8 +9,6 @@ import Data.ByteString (ByteString)
 import Data.Int (Int32)
 import Network.Socket (Socket, AddrInfo)
 import Polysemy
-import Polysemy.Input
-
 
 
 data RPC m a where
@@ -19,7 +17,8 @@ data RPC m a where
 
 makeSem ''RPC
 
-getPort :: IO (Int32)
+
+getPort :: IO Int32
 getPort = pure 6112
 
 getAddr :: Int32 -> IO AddrInfo
@@ -37,10 +36,11 @@ runRPCOverUDP
     => MVar Socket
     -> Sem (RPC ': r) a
     -> Sem r a
-runRPCOverUDP mvar
-  = runMonadicInput (sendM $ readMVar mvar)
-  . reinterpret \case
-      SendMessage msg -> input >>= sendM . flip netSend msg
-      RecvMessage     -> input >>= sendM . netRecv
-
+runRPCOverUDP mvar m = do
+  socket <- sendM $ readMVar mvar
+  interpret
+    \case
+      SendMessage msg -> sendM $ netSend socket msg
+      RecvMessage     -> sendM $ netRecv socket
+    m
 
