@@ -4,18 +4,29 @@ packages:
 - .
 
 extra-deps:
-- polysemy-0.3.0.0
-- polysemy-plugin-0.2.0.1
-- polysemy-zoo-0.1.2.0
-- gi-webkit2-4.0.19@sha256:0230edaa7f06e2e6a20dba140eea751f39d5db5ba570ea9e3d7979771e37b197
-- gi-soup-2.4.16@sha256:492ab7623ddf42ce3f02d08aa9964b743800e1264140ca60640b53d44299bfc6
-- gi-webkit2webextension-4.0.17@sha256:c4b2408c9de0259716a20fc0a127f89c9d605ce9a2c7e648db2ae99c1e068ae6
-- interpolatedstring-qq2-0.1.0.0
-- th-abstraction-0.3.1.0
+- polysemy-0.4.0.0
+- polysemy-plugin-0.2.1.0
+- polysemy-zoo-0.2.0.0
 - bifunctors-5.5.4
 - th-lift-0.8.0.1
-
-allow-newer: True
+- interpolatedstring-qq2-0.1.0.0
+- th-abstraction-0.3.1.0
+- haskell-gi-0.22.4
+- haskell-gi-base-0.22.2
+- gi-atk-2.0.19
+- gi-cairo-1.0.21
+- gi-gdk-3.0.20
+- gi-gdkpixbuf-2.0.21
+- gi-gio-2.0.23
+- gi-glib-2.0.21
+- gi-gobject-2.0.20
+- gi-gtk-3.0.30
+- gi-gtk-hs-0.3.7.0
+- gi-javascriptcore-4.0.19
+- gi-pango-1.0.20
+- gi-soup-2.4.20
+- gi-webkit2-4.0.23
+- gi-webkit2webextension-4.0.22
 
 flags:
   polysemy:
