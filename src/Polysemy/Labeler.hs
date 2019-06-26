@@ -14,7 +14,6 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Bifunctor
 import           Data.Binary
-import           Data.Coerce
 import           Data.Foldable
 import           Data.GI.Base
 import           Data.IORef
@@ -58,7 +57,6 @@ type IsContainer m a b =
   ( MonadIO m
   , IsLabel "getLength" (a -> m CULong)
   , IsLabel "item" (a -> CULong -> m b)
-  , Coercible a (ManagedPtr a)
   )
 
 itemsOf
@@ -67,7 +65,6 @@ itemsOf
   -> m [b]
 itemsOf mctr = do
   ctr <- mctr
-  liftIO $ print $ managedForeignPtr $ coerce @_ @(ManagedPtr a) ctr
   (len :: CULong) <- #getLength ctr
   for [0 .. len - 1] $ \i -> do
     #item ctr i
@@ -105,8 +102,6 @@ runLabelerWebExt ref = interpret \case
     sy <- fromIntegral <$> #getScrollY win
 
     doc <- #getDocument win
-    liftIO $ print $ managedForeignPtr $ coerce win
-    liftIO $ print $ managedForeignPtr $ coerce doc
     nodes <- fmap catMaybes . itemsOf $ #querySelectorAll doc "a"
     for nodes $ \node -> do
       Just e <- sendM $ castTo WE.DOMElement node
