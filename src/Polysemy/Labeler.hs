@@ -14,9 +14,11 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Bifunctor
 import           Data.Binary
+import           Data.Coerce
 import           Data.Foldable
 import           Data.GI.Base
 import           Data.IORef
+import           Data.Maybe
 import qualified Data.Text as T
 import           Data.Traversable
 import           Foreign.C.Types
@@ -28,8 +30,6 @@ import           Polysemy.Error
 import           Polysemy.NonDet
 import           Polysemy.Operators
 import           Polysemy.RPC
-
-import Data.Coerce
 
 
 data AABB a = AABB
@@ -107,7 +107,7 @@ runLabelerWebExt ref = interpret \case
     doc <- #getDocument win
     liftIO $ print $ managedForeignPtr $ coerce win
     liftIO $ print $ managedForeignPtr $ coerce doc
-    nodes <- itemsOf $ #querySelectorAll doc "a"
+    nodes <- fmap catMaybes . itemsOf $ #querySelectorAll doc "a"
     for nodes $ \node -> do
       Just e <- sendM $ castTo WE.DOMElement node
       rect <- #getBoundingClientRect e
@@ -120,7 +120,7 @@ runLabelerWebExt ref = interpret \case
     win <- sendM $ readIORef ref
     doc <- #getDocument win
 
-    old_els <- itemsOf $ #querySelectorAll doc ".__hskit_label__"
+    old_els <- fmap catMaybes . itemsOf $ #querySelectorAll doc ".__hskit_label__"
     for_ old_els $ #removeChild doc
 
     for_ ls $ \(label, AABB (rx, ry) (rx', ry')) -> do
